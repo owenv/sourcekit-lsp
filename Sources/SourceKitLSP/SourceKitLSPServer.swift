@@ -17,11 +17,12 @@ import Foundation
 import IndexStoreDB
 package import LanguageServerProtocol
 package import LanguageServerProtocolExtensions
-import LanguageServerProtocolJSONRPC
+package import LanguageServerProtocolJSONRPC
 import SKLogging
 package import SKOptions
 import SemanticIndex
 import SourceKitD
+package import ToolsProtocolsSwiftExtensions
 package import SwiftExtensions
 package import ToolchainRegistry
 
@@ -50,11 +51,11 @@ package actor SourceKitLSPServer {
 
   /// The queue on which we keep track of `inProgressTextDocumentRequests` to ensure updates to
   /// `inProgressTextDocumentRequests` are handled in order.
-  package let textDocumentTrackingQueue = AsyncQueue<Serial>()
+  package let textDocumentTrackingQueue = AsyncQueue<ToolsProtocolsSwiftExtensions.Serial>()
 
   /// The queue on which all modifications of `workspaceForUri` happen. This means that the value of
   /// `workspacesAndIsImplicit` and `workspaceForUri` can't change while executing a closure on `workspaceQueue`.
-  private let workspaceQueue = AsyncQueue<Serial>()
+  private let workspaceQueue = AsyncQueue<ToolsProtocolsSwiftExtensions.Serial>()
 
   /// The connection to the editor.
   package let client: Connection
@@ -64,7 +65,7 @@ package actor SourceKitLSPServer {
   /// Initialization can be awaited using `waitUntilInitialized`.
   private var initialized: Bool = false
 
-  private let _options: ThreadSafeBox<SourceKitLSPOptions>
+  private let _options: ToolsProtocolsSwiftExtensions.ThreadSafeBox<SourceKitLSPOptions>
   nonisolated var options: SourceKitLSPOptions {
     _options.value
   }

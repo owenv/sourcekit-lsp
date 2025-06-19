@@ -14,8 +14,10 @@ import BuildServerProtocol
 package import Foundation
 package import LanguageServerProtocol
 import LanguageServerProtocolExtensions
+import LanguageServerProtocolJSONRPC
 import SKLogging
 import SKOptions
+import ToolsProtocolsSwiftExtensions
 import SwiftExtensions
 import ToolchainRegistry
 

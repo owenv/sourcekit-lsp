@@ -15,10 +15,12 @@ import Dispatch
 package import Foundation
 package import LanguageServerProtocol
 package import LanguageServerProtocolExtensions
+package import LanguageServerProtocolJSONRPC
 import SKLogging
 package import SKOptions
 import SKUtilities
-package import SwiftExtensions
+package import ToolsProtocolsSwiftExtensions
+import SwiftExtensions
 import TSCExtensions
 package import ToolchainRegistry
 
@@ -167,7 +169,7 @@ private enum BuildSystemAdapter {
       // After we sent the request, the ID of the request.
       // When we send a `CancelRequestNotification` this is reset to `nil` so that we don't send another cancellation
       // notification.
-      let requestID = ThreadSafeBox<RequestID?>(initialValue: nil)
+      let requestID = ToolsProtocolsSwiftExtensions.ThreadSafeBox<RequestID?>(initialValue: nil)
 
       return try await withTaskCancellationHandler {
         return try await withCheckedThrowingContinuation { continuation in

@@ -11,6 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 package import LanguageServerProtocol
+import LanguageServerProtocolJSONRPC
 import LanguageServerProtocolExtensions
 import SKLogging
 import SwiftExtensions
