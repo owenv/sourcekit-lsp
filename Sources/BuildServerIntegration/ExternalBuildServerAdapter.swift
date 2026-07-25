@@ -215,6 +215,9 @@ actor ExternalBuildServerAdapter {
   /// The `BuildServerManager` that handles messages from the BSP server to SourceKit-LSP.
   var messagesToSourceKitLSPHandler: any MessageHandler
 
+  /// Hooks that allow tests to inspect the messages sent to the build server.
+  private let buildServerHooks: BuildServerHooks
+
   /// The JSON-RPC connection between SourceKit-LSP and the BSP server.
   private(set) var connectionToBuildServer: LegacyNameFallbackConnection?
 
@@ -244,11 +247,13 @@ actor ExternalBuildServerAdapter {
   init(
     projectRoot: URL,
     config: BuildServerConfig,
-    messagesToSourceKitLSPHandler: any MessageHandler
+    messagesToSourceKitLSPHandler: any MessageHandler,
+    buildServerHooks: BuildServerHooks = BuildServerHooks()
   ) async throws {
     self.projectRoot = projectRoot
     self.serverConfig = config
     self.messagesToSourceKitLSPHandler = messagesToSourceKitLSPHandler
+    self.buildServerHooks = buildServerHooks
     self.connectionToBuildServer = LegacyNameFallbackConnection(
       try await self.createConnectionToBspServer(),
       legacyNames: MessageRegistry.bspLegacyNames
@@ -258,13 +263,15 @@ actor ExternalBuildServerAdapter {
   init(
     projectRoot: URL,
     configPath: URL,
-    messagesToSourceKitLSPHandler: any MessageHandler
+    messagesToSourceKitLSPHandler: any MessageHandler,
+    buildServerHooks: BuildServerHooks = BuildServerHooks()
   ) async throws {
     let serverConfig = try BuildServerConfig.load(from: configPath)
     try await self.init(
       projectRoot: projectRoot,
       config: serverConfig,
-      messagesToSourceKitLSPHandler: messagesToSourceKitLSPHandler
+      messagesToSourceKitLSPHandler: messagesToSourceKitLSPHandler,
+      buildServerHooks: buildServerHooks
     )
   }
 
@@ -287,6 +294,7 @@ actor ExternalBuildServerAdapter {
 
   /// Send a request to the build server.
   func send<Request: RequestType>(_ request: Request) async throws -> Request.Response {
+    await buildServerHooks.preHandleRequest?(request)
     guard let connectionToBuildServer else {
       throw ResponseError.internalError("BSP server has crashed")
     }
