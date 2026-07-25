@@ -2660,11 +2660,8 @@ final class BackgroundIndexingTests: SourceKitLSPTestCase {
     // get prepared first, which is contrary to the background behavior we want to check here.
     try await fulfillmentOfOrThrow(twoPreparationRequestsReceived)
     XCTAssertEqual(
-      preparationRequests.value.flatMap(\.targets),
-      [
-        try BuildTargetIdentifier(target: "LibA", destination: .target),
-        try BuildTargetIdentifier(target: "LibB", destination: .target),
-      ]
+      preparationRequests.value.flatMap(\.targets).compactMap(\.targetName),
+      ["LibA", "LibB"]
     )
     withExtendedLifetime(project) {}
   }

@@ -37,35 +37,33 @@ enum BuildDestination {
 }
 
 extension BuildTargetIdentifier {
-  /// - Important: *For testing only*
-  init(target: String, destination: BuildDestination) throws {
-    var components = URLComponents()
-    components.scheme = "swiftpm"
-    components.host = "target"
-    components.queryItems = [
-      URLQueryItem(name: "target", value: target),
-      URLQueryItem(name: "destination", value: destination.id),
-    ]
-
-    struct FailedToConvertSwiftBuildTargetToUrlError: Swift.Error, CustomStringConvertible {
-      var target: String
-      var destination: String
-
-      var description: String {
-        return "Failed to generate URL for target: \(target), destination: \(destination)"
+  /// The name of the target this identifier corresponds to.
+  var targetName: String? {
+    guard let components = URLComponents(url: uri.arbitrarySchemeURL, resolvingAgainstBaseURL: false) else {
+      return nil
+    }
+    switch components.scheme {
+    case "swiftpm":
+      return components.queryItems?.last(where: { $0.name == "target" })?.value
+    case "swift-build":
+      guard let targetGUID = components.queryItems?.last(where: { $0.name == "targetGUID" })?.value else {
+        return nil
       }
+      guard let name = targetGUID.split(separator: ":", maxSplits: 1).last.map(String.init) else {
+        return nil
+      }
+      if targetGUID.hasPrefix("PACKAGE-PRODUCT:") {
+        return name.split(separator: ".", maxSplits: 1).last.map(String.init)
+      }
+      return name
+    default:
+      return nil
     }
-
-    guard let url = components.url else {
-      throw FailedToConvertSwiftBuildTargetToUrlError(target: target, destination: destination.id)
-    }
-
-    self.init(uri: URI(url))
   }
 }
 
 struct ExpectedPreparation {
-  let target: BuildTargetIdentifier
+  let targetName: String
 
   /// A closure that will be executed when a preparation task starts.
   /// This allows the artificial delay of a preparation task to force two preparation task to race.
@@ -81,8 +79,7 @@ struct ExpectedPreparation {
     didStart: (@Sendable () -> Void)? = nil,
     didFinish: (@Sendable () -> Void)? = nil
   ) throws {
-    // This should match the format in `BuildTargetIdentifier(_: any SwiftBuildTarget)` inside SwiftPMBuildServer.
-    self.target = try BuildTargetIdentifier(target: target, destination: destination)
+    self.targetName = target
     self.didStart = didStart
     self.didFinish = didFinish
   }
@@ -154,7 +151,7 @@ actor ExpectedIndexTaskTracker {
       return
     }
     for expectedPreparation in expectedTargetsToPrepare {
-      if taskDescription.targetsToPrepare.contains(expectedPreparation.target) {
+      if taskDescription.targetsToPrepare.contains(where: { $0.targetName == expectedPreparation.targetName }) {
         expectedPreparation.didStart?()
       }
     }
@@ -172,13 +169,16 @@ actor ExpectedIndexTaskTracker {
       XCTFail("Didn't expect a preparation but received \(taskDescription.targetsToPrepare)")
       return
     }
-    guard Set(taskDescription.targetsToPrepare).isSubset(of: expectedTargetsToPrepare.map(\.target)) else {
+    guard
+      Set(taskDescription.targetsToPrepare.compactMap(\.targetName))
+        .isSubset(of: expectedTargetsToPrepare.map(\.targetName))
+    else {
       XCTFail("Received unexpected preparation of \(taskDescription.targetsToPrepare)")
       return
     }
     var remainingExpectedTargetsToPrepare: [ExpectedPreparation] = []
     for expectedPreparation in expectedTargetsToPrepare {
-      if taskDescription.targetsToPrepare.contains(expectedPreparation.target) {
+      if taskDescription.targetsToPrepare.contains(where: { $0.targetName == expectedPreparation.targetName }) {
         expectedPreparation.didFinish?()
       } else {
         remainingExpectedTargetsToPrepare.append(expectedPreparation)

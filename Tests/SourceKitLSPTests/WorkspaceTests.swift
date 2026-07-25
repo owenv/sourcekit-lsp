@@ -1139,7 +1139,7 @@ final class WorkspaceTests: SourceKitLSPTestCase {
           }
           do {
             XCTAssert(
-              task.targetsToPrepare.contains(try BuildTargetIdentifier(target: "LibB", destination: .target)),
+              task.targetsToPrepare.contains(where: { $0.targetName == "LibB" }),
               "Prepared unexpected targets: \(task.targetsToPrepare)"
             )
             try await repeatUntilExpectedResult {
@@ -1384,13 +1384,26 @@ final class WorkspaceTests: SourceKitLSPTestCase {
       enableBackgroundIndexing: true
     )
 
+    let fileAURI = try project.uri(for: "FileA.swift")
+    guard
+      let targetID = await project.testClient.server.workspaceForDocument(uri: fileAURI)?.buildServerManager.targets(
+        for: fileAURI
+      ).first
+    else {
+      XCTFail("Could not determine the target FileA.swift belongs to")
+      return
+    }
+
     let outputPaths = try await project.testClient.send(
       OutputPathsRequest(
-        target: BuildTargetIdentifier(target: "MyLibrary", destination: .target).uri,
+        target: targetID.uri,
         workspace: DocumentURI(project.scratchDirectory)
       )
     )
-    XCTAssertEqual(outputPaths.outputPaths.map { $0.suffix(13) }.sorted(), ["FileA.swift.o", "FileB.swift.o"])
+    XCTAssertEqual(outputPaths.outputPaths.count, 2)
+    for (outputPath, expectedOutputPathBase) in zip(outputPaths.outputPaths.sorted(), ["FileA", "FileB"]) {
+      XCTAssertTrue(outputPath.contains(expectedOutputPathBase) && outputPath.hasSuffix(".o"))
+    }
   }
 
   func testOrphanedClangLanguageServiceShutdown() async throws {
